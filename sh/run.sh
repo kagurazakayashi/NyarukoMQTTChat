@@ -1,0 +1,1 @@
+go run uuu.moe/yashi/NyarukoMQTTChat
