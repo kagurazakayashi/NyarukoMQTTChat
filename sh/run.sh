@@ -1,1 +1,1 @@
-go run uuu.moe/yashi/NyarukoMQTTChat
+go run github.com/kagurazakayashi/NyarukoMQTTChat
