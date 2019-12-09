@@ -3,14 +3,13 @@ package mqttmgr
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 // MQTTConnect : 连接到服务器
-func MQTTConnect(server string, username string, password string, qos byte, retained bool, topic string, lwt string, mqttvar uint) mqtt.Client {
+func MQTTConnect(server string, clientid string, username string, password string, qos byte, retained bool, topic string, lwt string, mqttvar uint) mqtt.Client {
 	logprint("I", "正在连接到服务器 "+server+" ...")
 	opts := mqtt.NewClientOptions().AddBroker(server).SetClientID("gotest")
 	opts.SetProtocolVersion(mqttvar)
@@ -39,7 +38,11 @@ func MQTTDisconnect(client mqtt.Client, timeout uint) {
 
 // MQTTPublish : 发送消息
 func MQTTPublish(client mqtt.Client, topic string, pubmsg string, qos byte, retained bool) bool {
-	logprint("I", "正在发送信息： "+pubmsg)
+	if len(pubmsg) == 0 {
+		logprint("E", "消息不能为空！")
+		return false
+	}
+	logprint("I", "正在发送信息...")
 	if token := client.Publish(topic, qos, retained, pubmsg); token.Wait() && token.Error() != nil {
 		logprint("E", "消息发送失败： "+token.Error().Error()+" 。")
 		return false
@@ -49,13 +52,8 @@ func MQTTPublish(client mqtt.Client, topic string, pubmsg string, qos byte, reta
 }
 
 // MQTTSubscribe : 订阅
-func MQTTSubscribe(client mqtt.Client, topic string, qos byte) bool {
-	var msgRcvd = func(nclient mqtt.Client, msg mqtt.Message) {
-		var msgchars []string = strings.Split(string(msg.Payload()), "\n")
-		for i := 0; i < len(msgchars); i++ {
-			logprint("W", "收到消息： "+msgchars[i])
-		}
-	}
+func MQTTSubscribe(client mqtt.Client, topic string, qos byte, msgRcvd mqtt.MessageHandler) bool {
+
 	if token := client.Subscribe(topic, qos, msgRcvd); token.Wait() && token.Error() != nil {
 		logprint("E", "订阅失败： "+token.Error().Error()+" 。")
 		return false
