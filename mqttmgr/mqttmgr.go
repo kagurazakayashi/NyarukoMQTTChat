@@ -10,8 +10,18 @@ import (
 
 // MQTTConnect : 连接到服务器
 func MQTTConnect(server string, clientid string, username string, password string, qos byte, retained bool, topic string, lwt string, mqttvar uint) mqtt.Client {
+	// fmt.Println(server)
+	// fmt.Println(clientid)
+	// fmt.Println(username)
+	// fmt.Println(password)
+	// fmt.Println(qos)
+	// fmt.Println(retained)
+	// fmt.Println(topic)
+	// fmt.Println(lwt)
+	// fmt.Println(mqttvar)
+	logprint("I", "客户端 ID ： "+clientid)
 	logprint("I", "正在连接到服务器 "+server+" ...")
-	opts := mqtt.NewClientOptions().AddBroker(server).SetClientID("gotest")
+	opts := mqtt.NewClientOptions().AddBroker(server).SetClientID(clientid)
 	opts.SetProtocolVersion(mqttvar)
 	if len(username) > 0 {
 		opts.SetUsername("username")

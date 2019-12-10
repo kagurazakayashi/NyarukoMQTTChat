@@ -2,7 +2,9 @@ package main
 
 import (
 	"bufio"
+	"encoding/binary"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"math/rand"
 	"os"
@@ -22,31 +24,56 @@ type Msgjson struct {
 	M string //消息内容
 }
 
+var (
+	confServer   string
+	confMQTTvar  uint = 4
+	confUsername string
+	confPassword string
+	confQos      byte = 0
+	confQosS     string
+	confQosNum   uint64
+	confRetained bool = false
+	confTopic    string
+	confNick     string
+	confConnect  string //S=1
+	confLWT      string //S=-2
+	confExit     string //S=-1
+)
+
+func init() {
+	flag.StringVar(&confServer, "server", "tcp://127.0.0.1:1883", "服务器地址")
+	flag.UintVar(&confMQTTvar, "mqttvar", 4, "服务器版本")
+	flag.StringVar(&confUsername, "user", "", "服务器用户名")
+	flag.StringVar(&confPassword, "password", "", "服务器密码")
+	flag.Uint64Var(&confQosNum, "qos", 2, "通讯等级(0:最多一次的传输/1:至少一次的传输/2:只有一次的传输)")
+	if confQosS == "0" || confQosS == "1" || confQosS == "2" {
+		var buf = make([]byte, 8)
+		binary.LittleEndian.PutUint64(buf, confQosNum)
+		confQos = buf[0]
+	}
+	flag.BoolVar(&confRetained, "retain", true, "允许离线消息(true/false)")
+	flag.StringVar(&confTopic, "topic", "Public", "频道名称")
+	confTopic = "NyarukoMQTTChat/" + confTopic
+	flag.StringVar(&confNick, "nick", "匿名用户", "你的昵称")
+	flag.StringVar(&confConnect, "txtconn", "加入会话", "别人加入会话时的提示信息")
+	flag.StringVar(&confLWT, "txtlwt", "连接中断", "别人掉线时的提示信息")
+	flag.StringVar(&confExit, "txtexit", "离开会话", "别人离开会话时的提示信息")
+}
+
 func main() {
-	var confServer string = "tcp://127.0.0.1:1883"
-	var confMQTTvar uint = 4
-	var confUsername string = ""
-	var confPassword string = ""
-	var confQos byte = 0
-	var confRetained bool = false
-	var confTopic string = "test/topic"
-	var confNick string = "神楽坂雅詩"
-	var confConnect string = "加入会话" //S=1
-	var confLWT string = "连接中断"     //S=-2
-	var confExit string = "离开会话"    //S=-1
-	var confClientID string = "NyarukoMQTTChat/" + randString(16)
-
+	flag.Parse()
 	var pubmsg string = ""
+	var confClientID string = "NyarukoMQTTChat" + randString(16)
 	var client mqtt.Client = mqttmgr.MQTTConnect(confServer, confClientID, confUsername, confPassword, confQos, confRetained, confTopic, newmsg(-2, confNick, ""), confMQTTvar)
-
+	logprint("I", "昵称： "+confNick)
 	//数据接收代理
 	var msgRcvd mqtt.MessageHandler = func(nclient mqtt.Client, msg mqtt.Message) {
 		var msgstr string = string(msg.Payload())
 		var msgstrdata []byte = []byte(msgstr)
-		tmsg := Msgjson{}
-		err := json.Unmarshal(msgstrdata, &tmsg)
-		if err != nil {
-			logprint("E", "JSON 解码失败： "+err.Error())
+		var tmsg Msgjson = Msgjson{}
+		var jsonerr error = json.Unmarshal(msgstrdata, &tmsg)
+		if jsonerr != nil {
+			logprint("E", "JSON 解码失败： "+jsonerr.Error())
 		} else {
 			if tmsg.V != "NMC_1" {
 				logprint("E", "对方的 NyarukoMQTTChat 版本不匹配。")
@@ -91,12 +118,6 @@ func main() {
 	mqttmgr.MQTTSubscribe(client, confTopic, confQos, msgRcvd)
 	// var publishOK bool =
 	fmt.Println("输入消息内容（按回车换行，双击回车提交，/exit 退出）：")
-	// osc := make(chan os.Signal, 1)
-	// signal.Notify(osc, os.Interrupt, os.Kill)
-	// oscs := <-osc
-	// logprint("I", "收到指令："+oscs.String())
-	// mqttmgr.MQTTDisconnect(client, 300)
-	// os.Exit(0)
 	counts := make(map[string]int)
 	input := bufio.NewScanner(os.Stdin)
 
